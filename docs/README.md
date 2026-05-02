@@ -11,14 +11,14 @@ This is a proposed star schema dimensional data model for modeling elected offic
 An overview of how the tables are related can be found below 
 
 
-### `dim_jurisdiction` (county / county-equivalent)
+### `dim_jurisdiction`
 
-This table stores 
+This table stores information about each county include name, location information, and standardized codes.
 
 
 | Column                                   | Description                                                                   |
 | ---------------------------------------- | ----------------------------------------------------------------------------- |
-| `jurisdiction_id`                        |Primary key.                                                                   |
+| `id`                        |Primary key.                                                                   |
 | `state_fips`                             | Two-digit state FIPS.                                                         |
 | `county_fips`                            | Three-digit county FIPS within state.                                         |
 | `county_fips_5`                          | Five-digit state+county FIPS (convenience).                                   |
@@ -32,10 +32,12 @@ This table stores
 
 ### `dim_office_type`
 
+This table stoes the dimensional
+
 
 | Column                    | Description                               |
 | ------------------------- | ----------------------------------------- |
-| `office_type_id`          | Primary key                               |
+| `id`                      | Primary key                               |
 | `normalized_title`        | e.g. Sheriff, County Clerk, Commissioner  |
 | `office_type_description` | Optional longer description.              |
 
@@ -45,10 +47,9 @@ This table stores
 
 | Column                       | Description                                          |
 | ---------------------------- | ---------------------------------------------------- |
-| `office_instance_id`         | Surrogate primary key.                               |
-| `office_instance_natural_id` | Operational ID for this seat.                        |
-| `jurisdiction_dim_key`       | FK — county where this seat exists.                  |
-| `office_type_dim_key`        | FK — normalized role for this seat.                  |
+| `id`                         | Primary key.                                         |
+| `jurisdiction_id`            | FK — county where this seat exists.                  |
+| `office_type_id`             | FK — normalized role for this seat.                 |
 | `title_raw`                  | Title as printed on source sites.                    |
 | `district_label`             | District id/label; blank if at-large.                |
 | `seat_number`                | Multi-member at-large place number, if used.         |
@@ -62,8 +63,7 @@ This table stores
 
 | Column              | Description                          |
 | ------------------- | ------------------------------------ |
-| `person_dim_key`    | Surrogate primary key.               |
-| `person_natural_id` | Operational person ID.               |
+| `id`                | Surrogate primary key.               |
 | `full_name`         | Display name.                        |
 | `given_name`        | Parsed given name (optional).        |
 | `middle_name`       | Parsed middle name (optional).       |
@@ -71,16 +71,17 @@ This table stores
 | `suffix`            | Jr., III, etc.                       |
 | `name_aliases`      | Delimited alternates if stored flat. |
 
-### `dim_source` (catalog of origins)
+### `dim_source`
+
+This table contains a row for each possible data source. This is necessary as a tracking and monitoring feature.
 
 
 | Column              | Description                                                          |
 | ------------------- | -------------------------------------------------------------------- |
-| `source_dim_key`    | Surrogate primary key.                                               |
-| `source_natural_id` | Operational source ID.                                               |
+| `id`                | Surrogate primary key.                                               |
 | `source_name`       | Human-readable label.                                                |
 | `source_type`       | government_site, state_agency, third_party_aggregate, manual, other. |
-| `trust_tier`        | A_primary, B_curated, C_secondary (policy-defined).                  |
+| `trust_tier`        | A_primary, B_curated, C_secondary.                                   |
 | `base_url`          | Root URL if applicable.                                              |
 
 
@@ -103,28 +104,26 @@ This table stores
 
 ### `fact_official_tenure` (primary fact)
 
+Primary fact table with each elected official.
+
 **Grain:** one row per `tenure_natural_id` (one person in one `office_instance` for one continuous span).
 
 
 | Column                          | Description                                                                                        |
 | ------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `tenure_fact_key`               | Surrogate primary key for the fact row.                                                            |
-| `tenure_natural_id`             | Degenerate — operational tenure id.                                                                |
-| `office_instance_dim_key`       | FK — seat (`dim_office_instance`).                                                                 |
-| `person_dim_key`                | FK — officeholder (`dim_person`).                                                                  |
+| `id`               | Surrogate primary key for the fact row.                                                            |
+| `dim_office_instance_id`       | FK — seat (`dim_office_instance`).                                                                 |
+| `dim_person_id`                | FK — officeholder (`dim_person`).                                                                  |
 | `jurisdiction_dim_key`          | FK — county (`dim_jurisdiction`); repeated for filter performance; must stay consistent with seat. |
 | `role_start_date_dim_key`       | FK — `dim_date` for role start (unknown → unknown member or nullable FK per policy).               |
 | `role_end_date_dim_key`         | FK — `dim_date` for role end; sentinel or NULL policy for incumbent.                               |
-| `primary_source_record_dim_key` | FK — main evidence (`dim_source_record`) for this tenure row.                                      |
+| `dim_source_record_id` | FK — main evidence (`dim_source_record`) for this tenure row.                                      |
 | `role_title_raw`                | Degenerate — title string from source.                                                             |
 | `tenure_status`                 | Degenerate — incumbent, former, acting, appointed_fill, unknown.                                   |
 | `party_affiliation`             | Degenerate — party as of this tenure; optional `dim_party` later.                                  |
 | `entry_route`                   | Degenerate — general_election, special_election, appointment, succession, unknown.                 |
 | `tenure_length_days`            | Measure — days from start to end when both known; else null.                                       |
 | `is_current_flag`               | Measure — 1 if incumbent per ETL rule, else 0.                                                     |
-
-
-*Semi-additive note:* Do not sum `is_current_flag` across arbitrary dimensions without defining the grain (e.g., one incumbent per seat).
 
 ### `fact_jurisdiction_coverage_snapshot` (operational / QA)
 
@@ -140,25 +139,6 @@ This table stores
 | `filled_office_cnt`        | Measure — seats with a current tenure.                         |
 | `coverage_pct`             | Measure — `filled / expected` when expected > 0.               |
 | `last_successful_fetch_ts` | Degenerate — latest successful pull timestamp for that county. |
-
-
-### `fact_contact_snapshot` (optional, high churn)
-
-**Grain:** one row per office (or tenure) per **effective date** per contact snapshot (or one row per extract — match refresh policy).
-
-
-| Column                    | Description                                                              |
-| ------------------------- | ------------------------------------------------------------------------ |
-| `contact_fact_key`        | Surrogate primary key for the fact row.                                  |
-| `office_instance_dim_key` | FK — seat.                                                               |
-| `tenure_dim_key`          | FK — optional link to `fact_official_tenure.tenure_fact_key` if modeled. |
-| `effective_date_dim_key`  | FK — when this contact row was true per source (`dim_date`).             |
-| `source_record_dim_key`   | FK — evidence (`dim_source_record`).                                     |
-| `phone`                   | Degenerate — phone as of snapshot.                                       |
-| `email`                   | Degenerate — email as of snapshot.                                       |
-| `mailing_address`         | Degenerate — mailing address as of snapshot.                             |
-| `office_url`              | Degenerate — department/office URL.                                      |
-| `profile_url`             | Degenerate — official profile URL.                                       |
 
 
 ### `fact_data_quality_event` (factless / audit)
@@ -208,11 +188,40 @@ This table stores
 
 # Source Strategy
 
-combination of approaches
+A combination of sources would be used to acquire the needed data for all local elected officials.
+
+These sources could include:
+1. Official State and Local Website data
+2. Aggregated Data from Academic and Other Organizations
+    (MIT Election Lab)
+3. 
+
+
 Some questons to think about 
 
 
+MIT election data 
+
+
 # Collection approach
+
+A combination of approaches
+
+
+
+
+Some questons to think about 
+
+ETL pipelines would be built priimarily in python 
+
+Run in batch, since real time data will not be needed.
+
+Inventory of data sources to pull from, use this to orchestrate the python jobs to each source.
+
+Python extractors --> Object storage + warehouse ETL --> dbt / SQL transforms 
+
+This data might already be structured or it migth be semi or unstructured, including from PDF or html.
+
 
 # Tradeoffs & Open Questions
 
@@ -222,3 +231,8 @@ Some questons to think about
 2. How do we know that data is complete? In case of incompleteness, how should this be reflected in the data and when is the threshold for good enough?
 
 3. How to best track changes in the data 
+
+In the data model section, I primarily defined the final (Gold) layer of the dimensional model, but likely there would be need to have intermediate (Bronze and Silver) data layers with initial data cleanup and standardization. However, the specifics of these layers would depend largely on what the source data looks like, so I have not included details for the initial proposal.
+
+
+I think the monitoring will be one of the most challenging and important parts to this data acquisition process.
