@@ -26,13 +26,13 @@ This table stores information about each county include name, location informati
 | `county_name`                            | Canonical display name.                                                       |
 | `state_postal_code`                      | Two-letter state.                                                             |
 | `county_class`                           | county, parish, borough, independent_city, etc.                               |
-| `name_aliases`                           | Pipe- or JSON-delimited aliases if the warehouse stores flat text.            |
 | `row_effective_date` / `row_expiry_date` | Optional Slowly Changing Dimension Type 2 effective/expiration dates if boundaries or names change over time. |
 
 
 ### `dim_office_type`
 
-This table stoes the dimensional
+This table stores the dimensional data for each office type. This is a useful dimension table given that
+different counties may have different offices.
 
 
 | Column                    | Description                               |
@@ -40,80 +40,69 @@ This table stoes the dimensional
 | `id`                      | Primary key                               |
 | `normalized_title`        | e.g. Sheriff, County Clerk, Commissioner  |
 | `office_type_description` | Optional longer description.              |
+| `source_id`               | Foreign key to dim_source                 |
 
 
 ### `dim_office_instance` 
+
+This table stores each instance of a specific office, for example in the case of multiple members of the same title.
 
 
 | Column                       | Description                                          |
 | ---------------------------- | ---------------------------------------------------- |
 | `id`                         | Primary key.                                         |
 | `jurisdiction_id`            | FK — county where this seat exists.                  |
-| `office_type_id`             | FK — normalized role for this seat.                 |
+| `office_type_id`             | FK — normalized role for this seat.                  |
 | `title_raw`                  | Title as printed on source sites.                    |
-| `district_label`             | District id/label; blank if at-large.                |
 | `seat_number`                | Multi-member at-large place number, if used.         |
 | `is_elected`                 | elected / appointed / unknown.                       |
 | `term_length_years`          | Term length in years if known from rules or sources. |
 | `is_partisan`                | partisan / nonpartisan / unknown.                    |
+| `source_id`         | Foreign key to dim_source.           |
+| `created_at`         | Row created at datetime.            |
+| `updated_at`         | Row updated at datetime.            |
 
 
 ### `dim_person`
 
+This dimensional table contains the actual person level details, including full name and suffix.
 
 | Column              | Description                          |
 | ------------------- | ------------------------------------ |
-| `id`                | Surrogate primary key.               |
+| `id`                | Primary key.               |
 | `full_name`         | Display name.                        |
 | `given_name`        | Parsed given name (optional).        |
 | `middle_name`       | Parsed middle name (optional).       |
 | `family_name`       | Parsed family name (optional).       |
 | `suffix`            | Jr., III, etc.                       |
-| `name_aliases`      | Delimited alternates if stored flat. |
+| `source_id`         | Foreign key to dim_source.          |
+| `created_at`         | Row created at datetime.            |
+| `updated_at`         | Row updated at datetime.            |
 
 ### `dim_source`
 
-This table contains a row for each possible data source. This is necessary as a tracking and monitoring feature.
+This table contains a row for each possible data source. This is useful as a tracking and monitoring feature, allowing the aability to track where the data has been source from.
+
+This table can also serve as a reference of all sources data is being acquired from.
 
 
 | Column              | Description                                                          |
 | ------------------- | -------------------------------------------------------------------- |
-| `id`                | Surrogate primary key.                                               |
+| `id`                | Primary key.                                               |
 | `source_name`       | Human-readable label.                                                |
 | `source_type`       | government_site, state_agency, third_party_aggregate, manual, other. |
 | `trust_tier`        | A_primary, B_curated, C_secondary.                                   |
 | `base_url`          | Root URL if applicable.                                              |
 
-
-### `dim_source_record` (one fetch / extract)
-
-
-| Column                     | Description                                       |
-| -------------------------- | ------------------------------------------------- |
-| `source_record_dim_key`    | Surrogate primary key.                            |
-| `source_record_natural_id` | Operational blob/extract ID.                      |
-| `source_dim_key`           | FK — parent source.                               |
-| `fetched_at`               | Timestamp when the system retrieved the evidence. |
-| `source_as_of_text`        | “Last updated” text from page if present.         |
-| `content_hash`             | Dedup / change detection.                         |
-| `raw_payload_uri`          | Object storage pointer to raw payload.            |
-| `parser_version`           | Parser version that produced structured fields.   |
-
-
----
-
 ### `fact_official_tenure` (primary fact)
 
-Primary fact table with each elected official.
-
-**Grain:** one row per `tenure_natural_id` (one person in one `office_instance` for one continuous span).
-
+Primary fact table with each elected official with each row representing one elected official.
 
 | Column                          | Description                                                                                        |
 | ------------------------------- | -------------------------------------------------------------------------------------------------- |
 | `id`               | Surrogate primary key for the fact row.                                                            |
-| `dim_office_instance_id`       | FK — seat (`dim_office_instance`).                                                                 |
-| `dim_person_id`                | FK — officeholder (`dim_person`).                                                                  |
+| `dim_office_instance_id`       | Foreign key to seat level row in(`dim_office_instance`).                                                                 |
+| `dim_person_id`                | Foreign key to person details in(`dim_person`).                                                                  |
 | `jurisdiction_dim_key`          | FK — county (`dim_jurisdiction`); repeated for filter performance; must stay consistent with seat. |
 | `role_start_date_dim_key`       | FK — `dim_date` for role start (unknown → unknown member or nullable FK per policy).               |
 | `role_end_date_dim_key`         | FK — `dim_date` for role end; sentinel or NULL policy for incumbent.                               |
@@ -124,6 +113,9 @@ Primary fact table with each elected official.
 | `entry_route`                   | Degenerate — general_election, special_election, appointment, succession, unknown.                 |
 | `tenure_length_days`            | Measure — days from start to end when both known; else null.                                       |
 | `is_current_flag`               | Measure — 1 if incumbent per ETL rule, else 0.                                                     |
+| `source_id`         | Foreign key to dim_source.          |
+| `created_at`         | Row created at datetime.            |
+| `updated_at`         | Row updated at datetime.            |
 
 ### `fact_jurisdiction_coverage_snapshot` (operational / QA)
 
@@ -133,43 +125,14 @@ Primary fact table with each elected official.
 | Column                     | Description                                                    |
 | -------------------------- | -------------------------------------------------------------- |
 | `coverage_fact_key`        | Surrogate primary key for the fact row.                        |
-| `jurisdiction_dim_key`     | FK — county.                                                   |
-| `snapshot_date_dim_key`    | FK — as-of date for the metrics (`dim_date`).                  |
-| `expected_office_cnt`      | Measure — expected seats from catalog or heuristic.            |
-| `filled_office_cnt`        | Measure — seats with a current tenure.                         |
+| `jurisdiction_dim_id`     | FK — county.                                                   |
+| `snapshot_date_dim_id`    | FK — as-of date for the metrics (`dim_date`).                  |
+| `expected_office_count`      | Measure — expected seats from catalog or heuristic.            |
+| `filled_office_count`        | Measure — seats with a current tenure.                         |
 | `coverage_pct`             | Measure — `filled / expected` when expected > 0.               |
 | `last_successful_fetch_ts` | Degenerate — latest successful pull timestamp for that county. |
-
-
-### `fact_data_quality_event` (factless / audit)
-
-**Grain:** one row per quality flag event (optionally only “open” flags).
-
-
-| Column                          | Description                                                                                                     |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `quality_event_key`             | Surrogate primary key for the event row.                                                                        |
-| `flag_natural_id`               | Degenerate — operational flag id.                                                                               |
-| `entity_grain`                  | Degenerate — jurisdiction, office_instance, person, tenure, contact.                                            |
-| `entity_natural_id`             | Degenerate — ID in operational layer.                                                                           |
-| `flag_type`                     | Degenerate — stale, conflicting_sources, parse_uncertain, inferred_district, duplicate_person_suspected, other. |
-| `severity`                      | Degenerate — info, warning, error.                                                                              |
-| `field_name`                    | Degenerate — which attribute is suspect, if applicable.                                                         |
-| `notes`                         | Degenerate — free-text detail.                                                                                  |
-| `created_at`                    | Degenerate — when the flag was recorded.                                                                        |
-| `related_source_record_dim_key` | FK — nullable evidence (`dim_source_record`) for the flag.                                                      |
-
-
-### Bridge / current roster (optional mart)
-
-`**mart_current_roster*`* — materialized join of `fact_official_tenure` (where `is_current_flag = 1`) to dimensions, for analyst extracts. Not a separate logical grain; avoids repeating ad hoc joins.
-
-
-| Column              | Description                                                                                                   |
-| ------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `export_attributes` | Denormalized keys and attributes from dims + fact degenerates needed for analyst export (define per product). |
-| `last_verified_at`  | Max `fetched_at` from linked `dim_source_record`.                                                             |
-
+| `created_at`         | Row created at datetime.            |
+| `updated_at`         | Row updated at datetime.            |
 
 ### Relationship summary (logical)
 
