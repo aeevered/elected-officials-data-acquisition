@@ -1,56 +1,24 @@
 # Documentation
 
-- **[part1-design.md](part1-design.md)** — Part 1 deliverable (data model, sources, collection approach, tradeoffs, AI usage template).
-
-See the [repository README](../README.md) for the full brief and submission instructions.
-
-test
+The purpose of this README is to outline a proposed approach to data acquisition and modeling for elected official data.
 
 ---
 
-## Dataset field model — dimensional (star)
+## Data Model
 
-This is a **star-oriented** dimensional design for analyst warehouses and BI tools. Surrogate keys (`*_dim_key`) are warehouse integers or hashes; `*_natural_id` ties back to operational systems. Dates use a conformed `**dim_date`**. Many attributes are nullable in practice; load unknowns explicitly and use `**fact_data_quality_event**` for caveats.
+This is a proposed star schema dimensional data model for modeling elected official data.
 
-**Center of the star:** `fact_official_tenure` — one row per continuous assignment of one person to one county office seat (including acting or appointment fills if modeled).
-
-```mermaid
-flowchart LR
-  fact_official_tenure[fact_official_tenure]
-  fact_jurisdiction_coverage_snapshot[fact_jurisdiction_coverage_snapshot]
-  fact_contact_snapshot[fact_contact_snapshot]
-  fact_data_quality_event[fact_data_quality_event]
-  dim_jurisdiction[dim_jurisdiction]
-  dim_office_instance[dim_office_instance]
-  dim_office_type[dim_office_type]
-  dim_person[dim_person]
-  dim_date[dim_date]
-  dim_source[dim_source]
-  dim_source_record[dim_source_record]
-  dim_office_instance --> dim_jurisdiction
-  dim_office_instance --> dim_office_type
-  fact_official_tenure --> dim_office_instance
-  fact_official_tenure --> dim_person
-  fact_official_tenure --> dim_jurisdiction
-  fact_official_tenure --> dim_date
-  fact_official_tenure --> dim_source_record
-  dim_source_record --> dim_source
-  fact_jurisdiction_coverage_snapshot --> dim_jurisdiction
-  fact_jurisdiction_coverage_snapshot --> dim_date
-  fact_contact_snapshot --> dim_office_instance
-  fact_contact_snapshot --> dim_date
-  fact_data_quality_event --> dim_source_record
-```
-
+An overview of how the tables are related can be found below 
 
 
 ### `dim_jurisdiction` (county / county-equivalent)
 
+This table stores 
+
 
 | Column                                   | Description                                                                   |
 | ---------------------------------------- | ----------------------------------------------------------------------------- |
-| `jurisdiction_dim_key`                   | Surrogate primary key.                                                        |
-| `jurisdiction_natural_id`                | Stable operational ID (e.g., FIPS-based or internal).                         |
+| `jurisdiction_id`                        |Primary key.                                                                   |
 | `state_fips`                             | Two-digit state FIPS.                                                         |
 | `county_fips`                            | Three-digit county FIPS within state.                                         |
 | `county_fips_5`                          | Five-digit state+county FIPS (convenience).                                   |
@@ -59,27 +27,25 @@ flowchart LR
 | `state_postal_code`                      | Two-letter state.                                                             |
 | `county_class`                           | county, parish, borough, independent_city, etc.                               |
 | `name_aliases`                           | Pipe- or JSON-delimited aliases if the warehouse stores flat text.            |
-| `row_effective_date` / `row_expiry_date` | Optional SCD2 effective/expiry dates if boundaries or names change over time. |
+| `row_effective_date` / `row_expiry_date` | Optional Slowly Changing Dimension Type 2 effective/expiration dates if boundaries or names change over time. |
 
 
-### `dim_office_type` (normalized role)
+### `dim_office_type`
 
 
 | Column                    | Description                               |
 | ------------------------- | ----------------------------------------- |
 | `office_type_id`          | Primary key                               |
-| `office_type_natural_id`  | Operational ID for the normalized role.   |
 | `normalized_title`        | e.g. Sheriff, County Clerk, Commissioner  |
 | `office_type_description` | Optional longer description.              |
-| `external_taxonomy_code`  | Optional code from a partner or standard. |
 
 
-### `dim_office_instance` (seat in a county)
+### `dim_office_instance` 
 
 
 | Column                       | Description                                          |
 | ---------------------------- | ---------------------------------------------------- |
-| `office_instance_dim_key`    | Surrogate primary key.                               |
+| `office_instance_id`         | Surrogate primary key.                               |
 | `office_instance_natural_id` | Operational ID for this seat.                        |
 | `jurisdiction_dim_key`       | FK — county where this seat exists.                  |
 | `office_type_dim_key`        | FK — normalized role for this seat.                  |
@@ -104,26 +70,6 @@ flowchart LR
 | `family_name`       | Parsed family name (optional).       |
 | `suffix`            | Jr., III, etc.                       |
 | `name_aliases`      | Delimited alternates if stored flat. |
-
-
-*Optional:* SCD2 columns if legal name changes must be preserved for history.
-
-### `dim_date` (conformed role calendar)
-
-
-| Column          | Description                                      |
-| --------------- | ------------------------------------------------ |
-| `date_dim_key`  | Surrogate key (often `YYYYMMDD` integer).        |
-| `calendar_date` | Actual calendar date.                            |
-| `year`          | Calendar year.                                   |
-| `quarter`       | Calendar quarter.                                |
-| `month`         | Month of year.                                   |
-| `day_of_month`  | Day of month.                                    |
-| `day_of_week`   | Day of week (encoding per warehouse convention). |
-| `is_weekend`    | Convenience flag for reporting.                  |
-
-
-Use the same `dim_date` for tenure start, tenure end, coverage snapshot date, and contact effective date.
 
 ### `dim_source` (catalog of origins)
 
@@ -260,6 +206,19 @@ Use the same `dim_date` for tenure start, tenure end, coverage snapshot date, an
 
 ---
 
-## Source strategy (placeholder)
+# Source Strategy
 
-Expand here or keep detailed narrative in [part1-design.md](part1-design.md) §2 — source tiers, trust criteria, and gap handling.
+combination of approaches
+Some questons to think about 
+
+
+# Collection approach
+
+# Tradeoffs & Open Questions
+
+
+1. How do we know the data is accurate? In cases of conflict between sources, what should happen?
+
+2. How do we know that data is complete? In case of incompleteness, how should this be reflected in the data and when is the threshold for good enough?
+
+3. How to best track changes in the data 
