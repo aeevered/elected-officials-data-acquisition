@@ -1,6 +1,6 @@
-# Documentation
+# Proposal for Senior Technical Analyst Assessment - Elected Officials
 
-The purpose of this README is to outline a proposed approach to data acquisition and modeling for elected official data.
+The purpose of this README is to outline a proposed approach to data acquisition and modeling for U.S. county elected official data.
 
 ---
 
@@ -165,41 +165,47 @@ These sources could include:
 
 1. Official State and Local Website data
 2. Aggregated Data from Academic and Other Organizations (MIT Election Lab)
-3.
+3. Internet search for information
 
-For state aand local website data, this I would set up an Claude agent to navigate to the URLs, click through the pages as needed, and scrape the information into structured data. Similarly with aany PDF dataa sources.
-
-I would set up an 
+To determine the ranking in reliability, I would cross reference multiple sources, as well as rely on input from subject matter experts. In general, I would think official website data and aggregated academic data would be most reliable, though.
 
 ## Collection Approach
 
-A combination of approaches will be needed given the variety of data sources.
 
-Some questons to think about
+For the collection of the data, a combination of approaches will be needed given the variety of data sources, including from PDF or html.
 
-ETL pipelines would be built priimarily in python
+For the initial extraction of the raw data, ETL pipelines would be built priimarily in python. This data could be pulled. This data might already be structured, but the majority will likely be semi or unstructured. A tool like dbt or other data transformation tool would then be used to transform the data into a more structured, standardized data model for downstream analytics and use cases.
 
-Run in batch, since real time data will not be needed.
-
-Inventory of data sources to pull from, use this to orchestrate the python jobs to each source.
-
+The general pipelines would look like:
 Python extractors --> Object storage + warehouse ETL --> dbt / SQL transforms
 
-This data might already be structured or it migth be semi or unstructured, including from PDF or html.
+Also I would run the data collection in batch, since anything close to real time data will likely not be needed.
+
+In each part of the collectin process, I would rely on AI tools where it made sense. For example, I would set up of AI agents for discrete parts of the collection process. Examples might include:
+
+* For state aand local website data, I would set up an Claude agent to navigate to the URLs, click through the pages as needed, and scrape the information into structured data. Similarly with aany PDF dataa sources.
+* Agent to conduct internet search for individual state data.
+* Agent to create inventory of data sources to pull from, which could then be used to orchestrate the python jobs to each source.
+
 
 # Tradeoffs & Open Questions
 
 ## Key Questions
 
-There were a few specific questions that came to mind for me while I was working on this proposal:
+There were a few specific critical questions that came to mind for me while I was working on this proposal. I have provided some initial ideas and thoughts on these questions below; all should be evaluated and considered, though, throughout the development process.
 
 1. How do we know the data is accurate? In cases of conflict between sources, what should happen? What does done look like?
 
-    * The solution outlined above is an initial pass at this. 
+    * One approach to ensuring dtaa accuracy will e to cross reference data sources, as well as define a heirarchy of source reliability.
+    * I think the monitoring will also be one of the most important parts to this data acquisition process. I would also include testing and monitoring to check for whether the data extraction has completed successfully and whether the structured data is as expected.
 
 2. How do we know that data is complete? In case of incompleteness, how should this be reflected in the data and when is the threshold for good enough?
 
+* Have source completenexx table
+
 3. How to best track changes in the data?
+
+* One approach to this will be 
 
 In the data model section, I primarily defined the final (Gold) layer of the dimensional model, but likely there would be need to have intermediate (Bronze and Silver) data layers with initial data cleanup and standardization. However, the specifics of these layers would depend largely on what the source data looks like, so I have not included details for the initial proposal.
 
@@ -210,7 +216,7 @@ In the data model section, I primarily defined the final (Gold) layer of the dim
 
 ## AI Usage Note
 
-I used Cursor with different models for some specific parts of this task. I used the Ask function with different models to do some brainstorming and the Agent function for initial README structure, cleaning up formatting, etc.
+I used Cursor with different models for some specific parts of this task. I used the Ask function with different models to do some brainstorming and the Agent function for initial README structure, cleaning up formatting, etc. I reviewed all suggestions and automated changes before submission. The majority of the text I wrote myself after brainstorming and thinking through how I would approach the problem.
 
 For the actual implementation, I would automate large parts of teh workflow using Claude or equivvalent. I would use Clause code (or equivalent) for assistance in the python code development and Claude skills for automating different parts of the workflow, including:
 1. crawling URLs
