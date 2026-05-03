@@ -10,6 +10,10 @@ This is a proposed star schema dimensional data model for modeling elected offic
 
 An overview of how the tables are related can be found below.
 
+This dimensional modeling could be done using something like dbt or another data transformation tool. 
+
+Note: I have chosen a relational database dimensionaal data model as the output of this data acquisition, but the final output should depend largely on the ultimate use of the data. For example, it may make more sense to have the data in json format if it is going to be 
+
 ### `dim_jurisdiction`
 
 This table stores information about each county include name, location information, and standardized codes.
@@ -153,7 +157,7 @@ Primary fact table with each elected official with each row representing one ele
 
 ---
 
-# Source Strategy
+## Source Strategy
 
 A combination of sources would be used to acquire the needed data for all local elected officials.
 
@@ -163,13 +167,13 @@ These sources could include:
 2. Aggregated Data from Academic and Other Organizations (MIT Election Lab)
 3.
 
-Some questons to think about
+For state aand local website data, this I would set up an Claude agent to navigate to the URLs, click through the pages as needed, and scrape the information into structured data. Similarly with aany PDF dataa sources.
 
-MIT election data
+I would set up an 
 
-# Collection approach
+## Collection Approach
 
-A combination of approaches
+A combination of approaches will be needed given the variety of data sources.
 
 Some questons to think about
 
@@ -185,12 +189,31 @@ This data might already be structured or it migth be semi or unstructured, inclu
 
 # Tradeoffs & Open Questions
 
-1. How do we know the data is accurate? In cases of conflict between sources, what should happen?
+## Key Questions
+
+There were a few specific questions that came to mind for me while I was working on this proposal:
+
+1. How do we know the data is accurate? In cases of conflict between sources, what should happen? What does done look like?
+
+    * The solution outlined above is an initial pass at this. 
 
 2. How do we know that data is complete? In case of incompleteness, how should this be reflected in the data and when is the threshold for good enough?
 
-3. How to best track changes in the data
+3. How to best track changes in the data?
 
 In the data model section, I primarily defined the final (Gold) layer of the dimensional model, but likely there would be need to have intermediate (Bronze and Silver) data layers with initial data cleanup and standardization. However, the specifics of these layers would depend largely on what the source data looks like, so I have not included details for the initial proposal.
 
 I think the monitoring will be one of the most challenging and important parts to this data acquisition process.
+
+## Other Extensions
+In the data model section, I primarily defined the final (Gold) layer of the dimensional model, but likely there would be need to have intermediate (Bronze and Silver) data layers with initial data cleanup and standardization. However, the specifics of these layers would depend largely on what the source data looks like, so I have not included details for the initial proposal.
+
+## AI Usage Note
+
+I used Cursor with different models for some specific parts of this task. I used the Ask function with different models to do some brainstorming and the Agent function for initial README structure, cleaning up formatting, etc.
+
+For the actual implementation, I would automate large parts of teh workflow using Claude or equivvalent. I would use Clause code (or equivalent) for assistance in the python code development and Claude skills for automating different parts of the workflow, including:
+1. crawling URLs
+2. scraping web data
+3. audting data quality
+4. documenting code  
