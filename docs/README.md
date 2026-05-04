@@ -41,7 +41,6 @@ flowchart TB
   fact_tenure --> dim_person
   fact_tenure --> dim_jurisdiction
   fact_tenure --> dim_date
-  fact_tenure --> dim_source_record
 
   fact_coverage --> dim_jurisdiction
   fact_coverage --> dim_date
