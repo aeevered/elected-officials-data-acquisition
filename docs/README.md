@@ -173,102 +173,86 @@ Primary fact table with each row representing one elected official's tenure. Joi
 | `created_at` | Row created at datetime. |
 | `updated_at` | Row updated at datetime. |
 
-### `fact_jurisdiction_coverage_snapshot` (operational / QA)
+### `fact_jurisdiction_coverage_snapshot`
 
-**Grain:** one row per county per **snapshot date** (e.g., daily ETL).
+This QA table countains one row per county per snapshot date (e.g., daily ETL).
 
 | Column | Description |
 |--------|-------------|
-| `id` | Surrogate primary key for the fact row. |
+| `id` | Primay key. |
 | `jurisdiction_dim_id` | Foreign key to county (`dim_jurisdiction`). |
 | `snapshot_date_dim_id` | Foreign key to as-of date for the metrics (`dim_date`). |
 | `expected_office_count` | Measure — expected seats from catalog or heuristic. |
 | `filled_office_count` | Measure — seats with a current tenure. |
-| `coverage_pct` | Measure — `filled / expected` when expected > 0. |
-| `last_successful_fetch_ts` | Degenerate — latest successful pull timestamp for that county. |
+| `coverage_pct` | Measure — `filled / expected` . |
+| `last_successful_fetch_ts` | Latest successful pull timestamp for that county. |
 | `created_at` | Row created at datetime. |
 | `updated_at` | Row updated at datetime. |
 
-### Relationship Summary
-
-Below is a summary of the relationships between the above tables.
-
-| Column | Description |
-|--------|-------------|
-| `dim_office_instance` | Parents: `dim_jurisdiction`, `dim_office_type`. Snowflake-style; star still connects via instance. |
-| `dim_date` | Conformed calendar (one row per day); used for tenure dates and snapshot dates. |
-| `fact_official_tenure` | Parents: `dim_office_instance`, `dim_person`, `dim_jurisdiction`, `dim_date` (start and end), `dim_source_record`. Primary star. |
-| `dim_source_record` | Parent: `dim_source`. Provenance spine. |
-| `fact_jurisdiction_coverage_snapshot` | Parents: `dim_jurisdiction`, `dim_date`. Coverage KPIs. |
-| `fact_contact_snapshot` | Parents: `dim_office_instance`, `dim_date`, `dim_source_record`. Optional. |
-| `fact_data_quality_event` | Optional parent: `dim_source_record`. Audit / QA. |
 
 ---
 
 ## Source Strategy
 
-A combination of sources would be used to acquire the needed data for all local elected officials.
+A combination of sources would be used to acquire the needed data for all county elected officials.
 
 These sources could include:
 
-1. Official State and Local Website data
-2. Aggregated Data from Academic and Other Organizations (MIT Election Lab)
-3. Internet search for information
+1. Official State and County Website data
+2. Aggregated Data from Academic and Other Organizations (MIT Election Lab, etc.)
+3. Additional internet search for information
 
-To determine the ranking in reliability, I would cross reference multiple sources, as well as rely on input from subject matter experts. In general, I would think official website data and aggregated academic data would be most reliable, though.
+To determine the ranking in reliability, I would cross reference multiple sources, as well as rely on input from subject matter experts. In general, I would prioritize official website data and aggregated academic data as most reliable, though.
 
 ## Collection Approach
 
-
 For the collection of the data, a combination of approaches will be needed given the variety of data sources, including from PDF or html.
 
-For the initial extraction of the raw data, ETL pipelines would be built priimarily in python. This data could be pulled. This data might already be structured, but the majority will likely be semi or unstructured. A tool like dbt or other data transformation tool would then be used to transform the data into a more structured, standardized data model for downstream analytics and use cases.
+For the initial extraction of the raw data, ETL pipelines would be built priimarily in python. This data might already be structured, but the majority will likely be semi or unstructured. A tool like dbt or other data transformation tool would then be used to transform the data into a more structured, standardized data model for downstream analytics and use cases.
 
 The general pipelines would look like:
-Python extractors --> Object storage + warehouse ETL --> dbt / SQL transforms
+Python extractors --> Object storage + warehouse load --> dbt / SQL transformations
 
-Also I would run the data collection in batch, since anything close to real time data will likely not be needed.
+Also I would run the data collection in batch, since any real time data will likely not be needed.
 
-In each part of the collectin process, I would rely on AI tools where it made sense. For example, I would set up of AI agents for discrete parts of the collection process. Examples might include:
+In each part of the collectin process, I would rely on AI tools where it made sense. For example, I would set up AI agents for discrete parts of the collection process.
 
-* For state aand local website data, I would set up an Claude agent to navigate to the URLs, click through the pages as needed, and scrape the information into structured data. Similarly with aany PDF dataa sources.
+Examples might include:
+
+* For state and local website data, an AI agent to navigate to the URLs, click through the pages as needed, and scrape the information into structured data. Similarly with any PDF data sources.
 * Agent to conduct internet search for individual state data.
 * Agent to create inventory of data sources to pull from, which could then be used to orchestrate the python jobs to each source.
 
 
-# Tradeoffs & Open Questions
+## Tradeoffs & Open Questions
 
-## Key Questions
+### Key Questions
 
-There were a few specific critical questions that came to mind for me while I was working on this proposal. I have provided some initial ideas and thoughts on these questions below; all should be evaluated and considered, though, throughout the development process.
+There are a few specific critical questions in designing an approach for this data acquisition project. I have provided some initial ideas and thoughts on these questions below; all should be evaluated and considered, though, throughout the development process.
 
 1. How do we know the data is accurate? In cases of conflict between sources, what should happen? What does done look like?
 
-    * One approach to ensuring dtaa accuracy will e to cross reference data sources, as well as define a heirarchy of source reliability.
+    * One approach to ensuring data accuracy will be to cross reference data sources, as well as define a heirarchy of source reliability.
     * The way I have outlined the tables, there is a separate source id for each of the dimensions, which at this current point I think makes sense, but may evolve based on the data input.
-    * I think the monitoring will also be one of the most important parts to this data acquisition process. I would also include testing and monitoring to check for whether the data extraction has completed successfully and whether the structured data is as expected.
+    * The monitoring will also be one of the most important parts to this data acquisition process. Testing and monitoring will be included to check for whether the data extraction has completed successfully and whether the structured data is as expected.
 
 2. How do we know that data is complete? In case of incompleteness, how should this be reflected in the data and when is the threshold for good enough?
 
-* Have source completenexx table
+* The `fact_jurisdiction_coverage_snapshot` table is designed as a QA reference table to be able to see the completeness of data by jurisdiction,
 
 3. How to best track changes in the data?
 
-* One approach to this will be 
+* One approach to tracking changes in the data could be to include slowly changing dimension fields within each table (see `dim_jurisdiction` as an example).
 
-In the data model section, I primarily defined the final (Gold) layer of the dimensional model, but likely there would be need to have intermediate (Bronze and Silver) data layers with initial data cleanup and standardization. However, the specifics of these layers would depend largely on what the source data looks like, so I have not included details for the initial proposal.
-
-I think the monitoring will be one of the most challenging and important parts to this data acquisition process.
-
-## Other Extensions
-In the data model section, I primarily defined the final (Gold) layer of the dimensional model, but likely there would be need to have intermediate (Bronze and Silver) data layers with initial data cleanup and standardization. However, the specifics of these layers would depend largely on what the source data looks like, so I have not included details for the initial proposal.
+### Other Extensions
+* In the data model section, I primarily defined the final (Gold) layer of the dimensional model, but likely there would be need to have intermediate (Bronze and Silver) data layers with initial data cleanup and standardization. However, the specifics of these layers would depend largely on what the source data looks like, so I have not included details for the initial proposal.
 
 ## AI Usage Note
 
-I used Cursor with different models for some specific parts of this task. I used the Ask function with different models to do some brainstorming and the Agent function for initial README structure, cleaning up formatting, etc. I reviewed all suggestions and automated changes before submission. The majority of the text I wrote myself after brainstorming and thinking through how I would approach the problem.
+I used Cursor with different models for some specific parts of this task. Specifically, I used the Ask function to do some brainstorming and the Agent function for initial README structure, cleaning up formatting, etc. I reviewed all suggestions and changes before submission. The majority of the text I wrote myself after brainstorming and thinking through how I would approach the problem.
 
-For the actual implementation, I would automate large parts of teh workflow using Claude or equivvalent. I would use Clause code (or equivalent) for assistance in the python code development and Claude skills for automating different parts of the workflow, including:
+For the actual implementation, I would automate large parts of the workflow using Claude or equivvalent tools. I would use AI tools (or equivalent) for assistance in the python code development and or automating different parts of the workflow, including:
 1. crawling URLs
 2. scraping web data
-3. audting data quality
-4. documenting code  
+3. auditing data quality
+4. documenting the project 
