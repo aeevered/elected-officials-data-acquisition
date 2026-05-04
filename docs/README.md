@@ -18,7 +18,6 @@ An overview of the tables and how they are related can be found below, with more
 flowchart TB
   subgraph dimensions["Dimensions"]
     dim_source["dim_source"]
-    dim_source_record["dim_source_record"]
     dim_jurisdiction["dim_jurisdiction"]
     dim_office_type["dim_office_type"]
     dim_office_instance["dim_office_instance"]
@@ -31,7 +30,7 @@ flowchart TB
     fact_coverage["fact_jurisdiction_coverage_snapshot"]
   end
 
-  dim_source_record --> dim_source
+
   dim_office_instance --> dim_jurisdiction
   dim_office_instance --> dim_office_type
   dim_office_instance --> dim_source
@@ -232,9 +231,11 @@ There are a few specific critical questions in designing an approach for this da
 
 1. How do we know the data is accurate? In cases of conflict between sources, what should happen? What does done look like?
 
-    * One approach to ensuring data accuracy will be to cross reference data sources, as well as define a heirarchy of source reliability.
-    * The way I have outlined the tables, there is a separate source id for each of the dimensions, which at this current point I think makes sense, but may evolve based on the data input.
-    * The monitoring will also be one of the most important parts to this data acquisition process. Testing and monitoring will be included to check for whether the data extraction has completed successfully and whether the structured data is as expected.
+* One approach to ensuring data accuracy will be to cross reference data sources, as well as define a heirarchy of source reliability.
+
+* The way I have outlined the tables, there is a separate source id for each of the dimensions, which at this current point I think makes sense, but may evolve based on the data input.
+
+* The monitoring will also be one of the most important parts to this data acquisition process. Testing and monitoring will be included to check for whether the data extraction has completed successfully and whether the structured data is as expected.
 
 2. How do we know that data is complete? In case of incompleteness, how should this be reflected in the data and when is the threshold for good enough?
 
@@ -244,8 +245,9 @@ There are a few specific critical questions in designing an approach for this da
 
 * One approach to tracking changes in the data could be to include slowly changing dimension fields within each table (see `dim_jurisdiction` as an example).
 
-### Other Extensions
-* In the data model section, I primarily defined the final (Gold) layer of the dimensional model, but likely there would be need to have intermediate (Bronze and Silver) data layers with initial data cleanup and standardization. However, the specifics of these layers would depend largely on what the source data looks like, so I have not included details for the initial proposal.
+### Other Notes
+
+In the data model section, I primarily defined the final (Gold) layer of the dimensional model, but likely there would be need to have intermediate (Bronze and Silver) data layers with initial data cleanup and standardization. However, the specifics of these layers would depend largely on what the source data looks like, so I have not included details for the initial proposal.
 
 ## AI Usage Note
 
