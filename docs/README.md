@@ -161,11 +161,11 @@ Primary fact table with each row representing one elected official's tenure. Joi
 | `role_start_date_dim_id` | Foregin key to `dim_date` for role start. |
 | `role_end_date_dim_id` | Foregin key to `dim_date` for role end. |
 | `dim_source_record_id` | Foreign key to(`dim_source_record`). |
-| `role_title_raw` | Degenerate — title string from source. |
-| `tenure_status` | Degenerate — incumbent, former, acting, appointed_fill, unknown. |
-| `party_affiliation` | Degenerate — party as of this tenure; optional `dim_party` later. |
-| `entry_route` | Degenerate — general_election, special_election, appointment, succession, unknown. |
-| `tenure_length_days` | Measure — days from start to end when both known; else null. |
+| `role_title_raw` | Title string from source. |
+| `tenure_status` | incumbent, former, acting, appointed_fill, unknown |
+| `party_affiliation` | Party as of this tenure. |
+| `entry_route` | general_election, special_election, appointment, succession, unknown |
+| `tenure_length_days` | Days from start to end when both known; else null. |
 | `is_current_flag` | Measure — 1 if incumbent per ETL rule, else 0. |
 | `source_id` | Foreign key to `dim_source`. |
 | `created_at` | Row created at datetime. |
