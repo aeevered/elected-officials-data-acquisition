@@ -1,6 +1,6 @@
 # Proposal for Elected Officials Data Acquisition
 
-The purpose of this README is to outline a proposed approach to data acquisition and modeling for U.S. county elected official data.
+The purpose of this README is to outline a proposed approach to data acquisition and dataset modeling for U.S. county elected officials.
 
 ---
 
@@ -10,9 +10,9 @@ This is a proposed star schema dimensional data model for modeling elected offic
 
 The implementation of the dimensional modeling could be done using something like dbt or another data transformation tool. 
 
-Note: I have chosen a relational database dimensional data model as the output of this data acquisition, but the final output should depend largely on the ultimate use of the data. For example, it may make more sense to have the data in json and parquet format if it is going to be ingested by another tool.
+Note: I have chosen a relational database dimensional data model as the output of this data acquisition, but the final output should depend largely on the ultimate use of the data. For example, it may make more sense to have the data as something like json / parquet if it is going to be ingested by another tool.
 
-An overview of the tables and how they are related can be found below, with more detailed information into proposed columns per table following.
+An overview of the tables and how they are related can be found below, as well as more detailed information into description and proposed columns per table.
 
 ```mermaid
 flowchart TB
@@ -44,15 +44,13 @@ flowchart TB
 
   fact_coverage --> dim_jurisdiction
   fact_coverage --> dim_date
+
+
 ```
-
-_Arrows follow foreign-key direction (fact → dimension). `fact_official_tenure` references `dim_date` twice in the schema (role start and role end); shown as a single link for clarity._
-
-
 
 ### `dim_jurisdiction`
 
-This table stores information about each county include name, location information, and standardized codes.
+This table stores information about each county including name, location information, and standardized codes.
 
 | Column | Description |
 |--------|-------------|
@@ -67,7 +65,7 @@ This table stores information about each county include name, location informati
 | `source_id` | Foreign key to `dim_source`. |
 | `created_at` | Row created at datetime. |
 | `updated_at` | Row updated at datetime. |
-| `row_effective_date` / `row_expiration_date` | Optional Slowly Changing Dimension Type 2 effective/expiration dates if boundaries or names change over time. row_expieration_date is null if current record. |
+| `row_effective_date` / `row_expiration_date` | Optional Slowly Changing Dimension Type 2 effective/expiration dates if boundaries or names change over time. row_expiration_date is null if current record. |
 
 Note: row_effective_data / row_expiration_date fields could be added to other tables as needed to track slowly changing dimensions.
 
@@ -130,7 +128,7 @@ Conformed calendar dimension: one row per calendar day. Used for tenure start/en
 | `quarter` | Calendar quarter (1–4). |
 | `month` | Month of year (1–12). |
 | `day_of_month` | Day of month (1–31). |
-| `day_of_week` | Day of week (encoding per convention, e.g. 1 = Monday … 7 = Sunday). 
+| `day_of_week` | Day of week (e.g. 1 = Monday … 7 = Sunday). 
 
 ### `dim_source`
 
