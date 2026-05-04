@@ -1,4 +1,4 @@
-# Proposal for Senior Technical Analyst Assessment - Elected Officials
+# Proposal for Elected Officials Data Acquisition
 
 The purpose of this README is to outline a proposed approach to data acquisition and modeling for U.S. county elected official data.
 
