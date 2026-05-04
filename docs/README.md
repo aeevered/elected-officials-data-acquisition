@@ -8,11 +8,49 @@ The purpose of this README is to outline a proposed approach to data acquisition
 
 This is a proposed star schema dimensional data model for modeling elected official data.
 
-An overview of how the tables are related can be found below.
+The implementation of the dimensional modeling could be done using something like dbt or another data transformation tool. 
 
-This dimensional modeling could be done using something like dbt or another data transformation tool. 
+Note: I have chosen a relational database dimensional data model as the output of this data acquisition, but the final output should depend largely on the ultimate use of the data. For example, it may make more sense to have the data in json and parquet format if it is going to be ingested by another tool.
 
-Note: I have chosen a relational database dimensionaal data model as the output of this data acquisition, but the final output should depend largely on the ultimate use of the data. For example, it may make more sense to have the data in json format if it is going to be 
+An overview of the tables and how they are related can be found below, with more detailed information into proposed columns per table following.
+
+```mermaid
+flowchart TB
+  subgraph dimensions["Dimensions"]
+    dim_source["dim_source"]
+    dim_source_record["dim_source_record"]
+    dim_jurisdiction["dim_jurisdiction"]
+    dim_office_type["dim_office_type"]
+    dim_office_instance["dim_office_instance"]
+    dim_person["dim_person"]
+    dim_date["dim_date"]
+  end
+
+  subgraph facts["Facts"]
+    fact_tenure["fact_official_tenure"]
+    fact_coverage["fact_jurisdiction_coverage_snapshot"]
+  end
+
+  dim_source_record --> dim_source
+  dim_office_instance --> dim_jurisdiction
+  dim_office_instance --> dim_office_type
+  dim_office_instance --> dim_source
+  dim_office_type --> dim_source
+  dim_person --> dim_source
+
+  fact_tenure --> dim_office_instance
+  fact_tenure --> dim_person
+  fact_tenure --> dim_jurisdiction
+  fact_tenure --> dim_date
+  fact_tenure --> dim_source_record
+
+  fact_coverage --> dim_jurisdiction
+  fact_coverage --> dim_date
+```
+
+_Arrows follow foreign-key direction (fact → dimension). `fact_official_tenure` references `dim_date` twice in the schema (role start and role end); shown as a single link for clarity._
+
+
 
 ### `dim_jurisdiction`
 
@@ -23,12 +61,17 @@ This table stores information about each county include name, location informati
 | `id` | Primary key. |
 | `state_fips` | Two-digit state FIPS. |
 | `county_fips` | Three-digit county FIPS within state. |
-| `county_fips_5` | Five-digit state+county FIPS (convenience). |
+| `county_fips_5` | Five-digit state+county FIPS. |
 | `geoid` | Census GEOID for spatial joins (optional). |
 | `county_name` | Canonical display name. |
 | `state_postal_code` | Two-letter state. |
 | `county_class` | county, parish, borough, independent_city, etc. |
-| `row_effective_date` / `row_expiry_date` | Optional Slowly Changing Dimension Type 2 effective/expiration dates if boundaries or names change over time. |
+| `source_id` | Foreign key to `dim_source`. |
+| `created_at` | Row created at datetime. |
+| `updated_at` | Row updated at datetime. |
+| `row_effective_date` / `row_expiration_date` | Optional Slowly Changing Dimension Type 2 effective/expiration dates if boundaries or names change over time. row_expieration_date is null if current record. |
+
+Note: row_effective_data / row_expiration_date fields could be added to other tables as needed to track slowly changing dimensions.
 
 ### `dim_office_type`
 
@@ -40,6 +83,8 @@ This table stores the dimensional data for each office type. This is a useful di
 | `normalized_title` | e.g. Sheriff, County Clerk, Commissioner. |
 | `office_type_description` | Optional longer description. |
 | `source_id` | Foreign key to `dim_source`. |
+| `created_at` | Row created at datetime. |
+| `updated_at` | Row updated at datetime. |
 
 ### `dim_office_instance`
 
@@ -48,13 +93,13 @@ This table stores each instance of a specific office, for example in the case of
 | Column | Description |
 |--------|-------------|
 | `id` | Primary key. |
-| `jurisdiction_id` | FK — county where this seat exists. |
-| `office_type_id` | FK — normalized role for this seat. |
+| `jurisdiction_id` | Foreign key to dim_jurisdiction; county where this seat exists. |
+| `office_type_id` | Foreign key to dim_office_type; normalized role for this seat. |
 | `title_raw` | Title as printed on source sites. |
 | `seat_number` | Multi-member at-large place number, if used. |
-| `is_elected` | elected / appointed / unknown. |
+| `is_elected` | elected / appointed / unknown |
 | `term_length_years` | Term length in years if known from rules or sources. |
-| `is_partisan` | partisan / nonpartisan / unknown. |
+| `is_partisan` | partisan / nonpartisan / unknown |
 | `source_id` | Foreign key to `dim_source`. |
 | `created_at` | Row created at datetime. |
 | `updated_at` | Row updated at datetime. |
@@ -81,20 +126,19 @@ Conformed calendar dimension: one row per calendar day. Used for tenure start/en
 
 | Column | Description |
 |--------|-------------|
-| `id` | Primary key (surrogate integer or `YYYYMMDD` key, per warehouse convention). |
-| `calendar_date` | Calendar date (business natural key for the grain). |
+| `id` | Primary key. |
+| `calendar_date` | Calendar date. |
 | `year` | Four-digit calendar year. |
 | `quarter` | Calendar quarter (1–4). |
 | `month` | Month of year (1–12). |
 | `day_of_month` | Day of month (1–31). |
-| `day_of_week` | Day of week (encoding per convention, e.g. 1 = Monday … 7 = Sunday). |
-| `is_weekend` | Optional flag for Saturday/Sunday. |
+| `day_of_week` | Day of week (encoding per convention, e.g. 1 = Monday … 7 = Sunday). 
 
 ### `dim_source`
 
-This table contains a row for each possible data source. This is useful as a tracking and monitoring feature, allowing the aability to track where the data has been source from.
+This table contains a row for each possible data source. This is useful as a tracking and monitoring feature, allowing the ability to track where the data has been source from.
 
-This table can also serve as a reference of all sources data is being acquired from.
+This table can also serve as a reference of all sources where data is being acquired from.
 
 | Column | Description |
 |--------|-------------|
@@ -103,20 +147,22 @@ This table can also serve as a reference of all sources data is being acquired f
 | `source_type` | government_site, state_agency, third_party_aggregate, manual, other. |
 | `trust_tier` | A_primary, B_curated, C_secondary. |
 | `base_url` | Root URL if applicable. |
+| `created_at` | Row created at datetime. |
+| `updated_at` | Row updated at datetime. |
 
 ### `fact_official_tenure` (primary fact)
 
-Primary fact table with each elected official with each row representing one elected official.
+Primary fact table with each row representing one elected official's tenure. Joins to dimensional tables for more detailed dimensional data.
 
 | Column | Description |
 |--------|-------------|
 | `id` | Surrogate primary key for the fact row. |
 | `dim_office_instance_id` | Foreign key to seat-level row in `dim_office_instance`. |
 | `dim_person_id` | Foreign key to person details in `dim_person`. |
-| `jurisdiction_dim_key` | FK — county (`dim_jurisdiction`); repeated for filter performance; must stay consistent with seat. |
-| `role_start_date_dim_key` | FK — `dim_date` for role start (unknown → unknown member or nullable FK per policy). |
-| `role_end_date_dim_key` | FK — `dim_date` for role end; sentinel or NULL policy for incumbent. |
-| `dim_source_record_id` | FK — main evidence (`dim_source_record`) for this tenure row. |
+| `dim_jurisdiction_id` | Foreign key to county (`dim_jurisdiction`); repeated for filter performance; must stay consistent with seat. |
+| `role_start_date_dim_id` | Foregin key to `dim_date` for role start. |
+| `role_end_date_dim_id` | Foregin key to `dim_date` for role end. |
+| `dim_source_record_id` | Foreign key to(`dim_source_record`). |
 | `role_title_raw` | Degenerate — title string from source. |
 | `tenure_status` | Degenerate — incumbent, former, acting, appointed_fill, unknown. |
 | `party_affiliation` | Degenerate — party as of this tenure; optional `dim_party` later. |
@@ -143,7 +189,9 @@ Primary fact table with each elected official with each row representing one ele
 | `created_at` | Row created at datetime. |
 | `updated_at` | Row updated at datetime. |
 
-### Relationship summary (logical)
+### Relationship Summary
+
+Below is a summary of the relationships between the above tables.
 
 | Column | Description |
 |--------|-------------|
@@ -197,6 +245,7 @@ There were a few specific critical questions that came to mind for me while I wa
 1. How do we know the data is accurate? In cases of conflict between sources, what should happen? What does done look like?
 
     * One approach to ensuring dtaa accuracy will e to cross reference data sources, as well as define a heirarchy of source reliability.
+    * The way I have outlined the tables, there is a separate source id for each of the dimensions, which at this current point I think makes sense, but may evolve based on the data input.
     * I think the monitoring will also be one of the most important parts to this data acquisition process. I would also include testing and monitoring to check for whether the data extraction has completed successfully and whether the structured data is as expected.
 
 2. How do we know that data is complete? In case of incompleteness, how should this be reflected in the data and when is the threshold for good enough?
