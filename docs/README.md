@@ -132,7 +132,7 @@ Conformed calendar dimension: one row per calendar day. Used for tenure start/en
 
 ### `dim_source`
 
-This table contains a row for each possible data source. This is useful as a tracking and monitoring feature, allowing the ability to track where the data has been source from.
+This table contains a row for each possible data source. This is useful as a tracking and monitoring feature, allowing the ability to track where the data has been sourced from.
 
 This table can also serve as a reference of all sources where data is being acquired from.
 
@@ -152,13 +152,12 @@ Primary fact table with each row representing one elected official's tenure. Joi
 
 | Column | Description |
 |--------|-------------|
-| `id` | Surrogate primary key for the fact row. |
+| `id` | Primary key. |
 | `dim_office_instance_id` | Foreign key to seat-level row in `dim_office_instance`. |
 | `dim_person_id` | Foreign key to person details in `dim_person`. |
-| `dim_jurisdiction_id` | Foreign key to county (`dim_jurisdiction`); repeated for filter performance; must stay consistent with seat. |
+| `dim_jurisdiction_id` | Foreign key to county (`dim_jurisdiction`). |
 | `role_start_date_dim_id` | Foregin key to `dim_date` for role start. |
 | `role_end_date_dim_id` | Foregin key to `dim_date` for role end. |
-| `dim_source_record_id` | Foreign key to(`dim_source_record`). |
 | `role_title_raw` | Title string from source. |
 | `tenure_status` | incumbent, former, acting, appointed_fill, unknown |
 | `party_affiliation` | Party as of this tenure. |
@@ -198,20 +197,20 @@ These sources could include:
 2. Aggregated Data from Academic and Other Organizations (MIT Election Lab, etc.)
 3. Additional internet search for information
 
-To determine the ranking in reliability, I would cross reference multiple sources, as well as rely on input from subject matter experts. In general, I would prioritize official website data and aggregated academic data as most reliable, though.
+To determine the ranking in reliability, I would cross reference multiple sources, as well as rely on input from subject matter experts. In general, I would prioritize official website data and aggregated academic data as most reliable.
 
 ## Collection Approach
 
 For the collection of the data, a combination of approaches will be needed given the variety of data sources, including from PDF or html.
 
-For the initial extraction of the raw data, ETL pipelines would be built priimarily in python. This data might already be structured, but the majority will likely be semi or unstructured. A tool like dbt or other data transformation tool would then be used to transform the data into a more structured, standardized data model for downstream analytics and use cases.
+For the initial extraction of the raw data, ETL pipelines would be built primarily in python. This data might already be structured, but the majority will likely be semi or unstructured. A tool like dbt or other data transformation tool would then be used to transform the data into a more structured, standardized data model for downstream analytics and use cases.
 
 The general pipelines would look like:
 Python extractors --> Object storage + warehouse load --> dbt / SQL transformations
 
 Also I would run the data collection in batch, since any real time data will likely not be needed.
 
-In each part of the collectin process, I would rely on AI tools where it made sense. For example, I would set up AI agents for discrete parts of the collection process.
+In each part of the collection process, I would rely on AI tools where it made sense. For example, I would set up AI agents for discrete parts of the collection process.
 
 Examples might include:
 
@@ -234,9 +233,9 @@ There are a few specific critical questions in designing an approach for this da
 
 * The monitoring will also be one of the most important parts to this data acquisition process. Testing and monitoring will be included to check for whether the data extraction has completed successfully and whether the structured data is as expected.
 
-2. How do we know that data is complete? In case of incompleteness, how should this be reflected in the data and when is the threshold for good enough?
+2. How do we know that data is complete? In case of incompleteness, how should this be reflected in the data and what is the threshold for good enough?
 
-* The `fact_jurisdiction_coverage_snapshot` table is designed as a QA reference table to be able to see the completeness of data by jurisdiction,
+* The `fact_jurisdiction_coverage_snapshot` table is designed as a QA reference table to be able to see the completeness of data by jurisdiction.
 
 3. How to best track changes in the data?
 
@@ -244,13 +243,13 @@ There are a few specific critical questions in designing an approach for this da
 
 ### Other Notes
 
-In the data model section, I primarily defined the final (Gold) layer of the dimensional model, but likely there would be need to have intermediate (Bronze and Silver) data layers with initial data cleanup and standardization. However, the specifics of these layers would depend largely on what the source data looks like, so I have not included details for the initial proposal.
+In the data model section, I primarily defined the final (Gold) layer of the dimensional model, but likely there would be a need to have intermediate (Bronze and Silver) data layers with initial data cleanup and standardization. However, the specifics of these layers would depend largely on what the source data looks like, so I have not included details for the initial proposal.
 
 ## AI Usage Note
 
 I used Cursor with different models for some specific parts of this task. Specifically, I used the Ask function to do some brainstorming and the Agent function for initial README structure, cleaning up formatting, etc. I reviewed all suggestions and changes before submission. The majority of the text I wrote myself after brainstorming and thinking through how I would approach the problem.
 
-For the actual implementation, I would automate large parts of the workflow using Claude or equivvalent tools. I would use AI tools (or equivalent) for assistance in the python code development and or automating different parts of the workflow, including:
+For the actual implementation, I would automate large parts of the workflow using Claude or equivvalent tools. I would use AI tools (or equivalent) for assistance in the python code development and automating different parts of the workflow, including:
 1. crawling URLs
 2. scraping web data
 3. auditing data quality
